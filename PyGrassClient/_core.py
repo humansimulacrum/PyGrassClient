@@ -55,7 +55,8 @@ class GrassWs:
                 wsapp.send(send_message)
                 logger.debug(f'send {send_message}')
             except Exception as e:
-                logger.error(f'[user_id: {self.user_id}] [proxy_url: {self.proxy_url}] ping error: {e}')
+                logger.error(
+                    f'[user_id: {self.user_id}] [proxy_url: {self.proxy_url}] ping error: {e}')
                 self.ws.close()
                 break
         self.is_online = False
@@ -93,7 +94,8 @@ class GrassWs:
             wsapp.send(json.dumps(auth_response))
             self.is_online = True
             logger.info(self.info(f"连接成功 连接次数: {self.reconnect_times}"))
-            self.ping_thread = threading.Thread(target=self.send_ping, args=(self.ws,), daemon=True)
+            self.ping_thread = threading.Thread(
+                target=self.send_ping, args=(self.ws,), daemon=True)
             self.ping_thread.start()
         elif message.get("action") == "PONG":
             pong_response = {"id": message["id"], "origin_action": "PONG"}
@@ -103,7 +105,8 @@ class GrassWs:
     def run(self):
         setdefaulttimeout(30)
         if self.proxy_url:
-            proxy_type, http_proxy_host, http_proxy_port, http_proxy_auth = parse_proxy_url(self.proxy_url)
+            proxy_type, http_proxy_host, http_proxy_port, http_proxy_auth = parse_proxy_url(
+                self.proxy_url)
         else:
             proxy_type = http_proxy_host = http_proxy_port = http_proxy_auth = None
         logger.info(self.info('Run start'))
@@ -120,7 +123,8 @@ class GrassWs:
 
 class PyGrassClient:
     def __init__(self, *, user_name=None, password=None, user_id=None, proxy_url=None):
-        assert user_id or (user_name and password), Exception('must set user_name and password or set user_id!')
+        assert user_id or (user_name and password), Exception(
+            'must set user_name and password or set user_id!')
         self.user_name = user_name
         self.password = password
         self.user_id = user_id
@@ -131,12 +135,14 @@ class PyGrassClient:
         # self.is_login = False
 
     def login(self):
-        assert (self.user_name and self.password), Exception('must set user_name and password!')
+        assert (self.user_name and self.password), Exception(
+            'must set user_name and password!')
         json_data = {
             'user': self.user_name,
             'password': self.password,
         }
-        response = self.session.post('https://api.getgrass.io/auth/login', json=json_data).json()
+        response = self.session.post(
+            'https://api.getgrass.io/auth/login', json=json_data).json()
         if response["status"] == "success":
             self.user_id = response["data"]["id"]
         else:
@@ -156,7 +162,8 @@ class PyGrassClient:
                     "username": auth[0],
                     "password": auth[1]
                 })
-        browser = playwright.firefox.launch(proxy=browser_proxy, headless=False)
+        browser = playwright.firefox.launch(
+            proxy=browser_proxy, headless=False)
         context = browser.new_context()
         page = context.new_page()
         page.set_default_timeout(60 * 1000)
@@ -183,10 +190,12 @@ class PyGrassClient:
             page.get_by_placeholder('Password').fill(self.password)
             page.get_by_text("ACCESS MY ACCOUNT").click()
 
-        page.wait_for_url('https://app.getgrass.io/dashboard', wait_until='networkidle')
+        page.wait_for_url('https://app.getgrass.io/dashboard',
+                          wait_until='networkidle')
         logger.info('Login Success!')
 
-        self.user_id = page.evaluate("() => localStorage.userId").replace('"', '')
+        self.user_id = page.evaluate(
+            "() => localStorage.userId").replace('"', '')
 
         # 保存登陆信息
         cookies = context.cookies()
@@ -203,7 +212,8 @@ class PyGrassClient:
         # score
         box = page.locator(
             'xpath=/html/body/div[1]/div[2]/main/div[2]/div/div[2]/div[1]/div[1]/div/div[2]/div[1]/div/div[1]').bounding_box()
-        page.mouse.move(box["x"] + box["width"] / 3 * 2, box["y"] + box["height"] / 2)
+        page.mouse.move(box["x"] + box["width"] / 3 *
+                        2, box["y"] + box["height"] / 2)
         score_text = page.locator('xpath=/html/body/div[3]/div').text_content()
         total_score = float(score_text.split(':')[1].replace(',', ''))
         self.dashboard['total_score'] = total_score
@@ -254,7 +264,8 @@ def load_account_by_file(acc_file_path):
                 user_name = password = None
             proxy_url = proxy_url or None
             index += 1
-            client = PyGrassClient(user_id=user_id, user_name=user_name, password=password, proxy_url=proxy_url)
+            client = PyGrassClient(
+                user_id=user_id, user_name=user_name, password=password, proxy_url=proxy_url)
             logger.info(f'[{index}] [user_id: {user_id}] [proxy: {proxy_url}]')
             all_clients.append(client)
     return all_clients
