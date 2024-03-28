@@ -10,15 +10,14 @@ import uuid
 import websocket
 from faker import Faker
 from loguru import logger
-from playwright.sync_api import sync_playwright
 from websocket import setdefaulttimeout
 
 from PyGrassClient._async_core import AsyncGrassWs
 from PyGrassClient.utils import parse_proxy_url, new_session, Status
 
-logger.remove()  # 移除默认的控制台输出处理器
+logger.remove() 
 
-logger.add(sys.stdout, level="INFO")  # 添加新的控制台输出处理器
+logger.add(sys.stdout, level="INFO") 
 
 
 class GrassWs:
@@ -148,78 +147,7 @@ class PyGrassClient:
         else:
             raise Exception(f'login fail, [{self.user_name}, {self.password}]')
 
-    def get_dash_data(self):
-        logger.info('Logining...')
-        playwright = sync_playwright().start()
-        browser_proxy = None
-        if self.proxy_url:
-            scheme, host, port, auth = parse_proxy_url(self.proxy_url)
-            browser_proxy = {
-                "server": f"{scheme}://{host}:{port}"
-            }
-            if auth:
-                browser_proxy.update({
-                    "username": auth[0],
-                    "password": auth[1]
-                })
-        browser = playwright.firefox.launch(
-            proxy=browser_proxy, headless=False)
-        context = browser.new_context()
-        page = context.new_page()
-        page.set_default_timeout(60 * 1000)
-        page.goto('https://app.getgrass.io/', wait_until='networkidle')
-        # 如果有缓存
-        if pathlib.Path(f'cookies/{self.user_name}.json').exists():
-            # 将cookies保存为文件
-            with open(f'cookies/{self.user_name}.json', 'r') as f:
-                cookies = json.load(f)
-            context.add_cookies(cookies)
-            # 从文件中读取 localStorage 数据
-            with open(f'cookies/localStorage—{self.user_name}.json', 'r') as f:
-                localStorage = json.load(f)
-
-            # 将 localStorage 数据加载到网页中
-            page.evaluate(
-                f"localStorageData => {{ for (let item in localStorageData) localStorage.setItem(item, localStorageData[item]) }}",
-                localStorage)
-
-            page.goto('https://app.getgrass.io/dashboard')
-
-        if page.url == 'https://app.getgrass.io/':
-            page.get_by_placeholder('Username or Email').fill(self.user_name)
-            page.get_by_placeholder('Password').fill(self.password)
-            page.get_by_text("ACCESS MY ACCOUNT").click()
-
-        page.wait_for_url('https://app.getgrass.io/dashboard',
-                          wait_until='networkidle')
-        logger.info('Login Success!')
-
-        self.user_id = page.evaluate(
-            "() => localStorage.userId").replace('"', '')
-
-        # 保存登陆信息
-        cookies = context.cookies()
-        # 将cookies保存为文件
-        with open(f'cookies/{self.user_name}.json', 'w') as f:
-            json.dump(cookies, f)
-
-        # 获取 localStorage 数据
-        localStorage = page.evaluate("() => JSON.stringify(localStorage)")
-        # 将 localStorage 数据保存为文件
-        with open(f'cookies/localStorage—{self.user_name}.json', 'w') as f:
-            f.write(localStorage)
-
-        # score
-        box = page.locator(
-            'xpath=/html/body/div[1]/div[2]/main/div[2]/div/div[2]/div[1]/div[1]/div/div[2]/div[1]/div/div[1]').bounding_box()
-        page.mouse.move(box["x"] + box["width"] / 3 *
-                        2, box["y"] + box["height"] / 2)
-        score_text = page.locator('xpath=/html/body/div[3]/div').text_content()
-        total_score = float(score_text.split(':')[1].replace(',', ''))
-        self.dashboard['total_score'] = total_score
-        browser.close()
-        return self.dashboard
-
+    
     async def connect_ws(self):
         if not self.user_id:
             self.login()
